@@ -44,10 +44,10 @@ options:
 '''
 
 EXAMPLES = '''
-- xen_vm_disk_list
-  vm: 29cc955c-5800-a257-94db-636f72af744e
-  multiple: true
-  powerstate: running
+- xen_vm_disk_list:
+    vm: 29cc955c-5800-a257-94db-636f72af744e
+    multiple: true
+    powerstate: running
 '''
 
 import os
@@ -86,6 +86,7 @@ class XeVmDiskList(XeBase):
         Returns:
             dict
         """
+
         self.cmd.append('vm-disk-list')
         if vm != None:
             self.cmd.append('vm=%s' % vm)
@@ -119,10 +120,23 @@ def main():
     vm_disk_list_vm = module.params['vm']
 
     out = vm_disk_list_cmd.vm_disk_list(vm=vm_disk_list_vm)
+    reg = r"\s*\(.*RW*\)\s*|\s*?\(.*RO*\)\s*"
+
+    out_arr = re.split(r"\n|:\s", re.sub(reg,'',out.replace(' ','')))
+
+    disks = {}
+
+    for x in out_arr:
+        if (re.match(r"Disk.*",x)):
+                disk = x
+                disks[disk] = {}
+        elif (re.match(r".*:.*",x)):
+                disks[disk][re.split(":",x)[0]] = re.split(":",x)[1]
+
 
     # split output by \n and : and remove the last 3 indexe I am sure this can be done better
-    out_formated = re.split(r"\n|:\s", out.replace(' ', '').strip())[:-3:]
-    kw = dict(changed=True, vm_disk_list=out,
+    #out_formated = re.split(r"\n|:\s", out.replace(' ', '').strip())[:-3:]
+    kw = dict(changed=True, vm_disk_list=disks,
               ansible_facts=dict(
                     ansible_fqdn=socket.getfqdn(),
                     ansible_domain='.'.join(socket.getfqdn().split('.')[1:])
